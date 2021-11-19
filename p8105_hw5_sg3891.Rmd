@@ -1,0 +1,231 @@
+---
+title: "Homework 3 solutions"
+author: "Jeff Goldsmith"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(p8105.datasets)
+library(viridis)
+
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+```
+
+### Due date
+
+Due: October 14 at 4:00pm. 
+
+### Points
+
+| Problem         | Points    |
+|:--------------- |:--------- |
+| Problem 0       | 25        |
+| Problem 1       | 25        |
+| Problem 2       | 25        |
+| Problem 3       | 25        |
+| Optional survey | No points |
+
+
+### Problem 0
+
+This "problem" focuses on structure of your submission, especially the use git and GitHub for reproducibility, R Projects to organize your work, R Markdown to write reproducible reports, relative paths to load data from local files, and reasonable naming structures for your files. 
+
+
+### Problem 1
+
+#### Read in the data
+
+```{r}
+data("instacart")
+
+instacart = 
+  instacart %>% 
+  as_tibble(instacart)
+```
+
+#### Answer questions about the data
+
+This dataset contains `r nrow(instacart)` rows and `r ncol(instacart)` columns, with each row resprenting a single product from an instacart order. Variables include identifiers for user, order, and product; the order in which each product was added to the cart. There are several order-level variables, describing the day and time of the order, and number of days since prior order. Then there are several item-specific variables, describing the product name (e.g. Yogurt, Avocado), department (e.g. dairy and eggs, produce), and aisle (e.g. yogurt, fresh fruits), and whether the item has been ordered by this user in the past. In total, there are `r instacart %>% select(product_id) %>% distinct %>% count` products found in `r instacart %>% select(user_id, order_id) %>% distinct %>% count` orders from `r instacart %>% select(user_id) %>% distinct %>% count` distinct users.
+
+Below is a table summarizing the number of items ordered from aisle. In total, there are 134 aisles, with fresh vegetables and fresh fruits holding the most items ordered by far.
+
+```{r}
+instacart %>% 
+  count(aisle) %>% 
+  arrange(desc(n))
+```
+
+Next is a plot that shows the number of items ordered in each aisle. Here, aisles are ordered by ascending number of items.
+
+```{r}
+instacart %>% 
+  count(aisle) %>% 
+  filter(n > 10000) %>% 
+  mutate(aisle = fct_reorder(aisle, n)) %>% 
+  ggplot(aes(x = aisle, y = n)) + 
+  geom_point() + 
+  labs(title = "Number of items ordered in each aisle") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+```
+
+Our next table shows the three most popular items in aisles `baking ingredients`, `dog food care`, and `packaged vegetables fruits`, and includes the number of times each item is ordered in your table.
+
+```{r}
+instacart %>% 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
+  group_by(aisle) %>% 
+  count(product_name) %>% 
+  mutate(rank = min_rank(desc(n))) %>% 
+  filter(rank < 4) %>% 
+  arrange(desc(n)) %>%
+  knitr::kable()
+```
+
+Finally is a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week. This table has been formatted in an untidy manner for human readers. Pink Lady Apples are generally purchased slightly earlier in the day than Coffee Ice Cream, with the exception of day 5.
+
+```{r}
+instacart %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  group_by(product_name, order_dow) %>%
+  summarize(mean_hour = mean(order_hour_of_day)) %>%
+  spread(key = order_dow, value = mean_hour) %>%
+  knitr::kable(digits = 2)
+```
+
+
+### Problem 2
+
+#### Read and clean the data
+
+```{r}
+data("brfss_smart2010")
+
+brfss_smart2010 = 
+  brfss_smart2010 %>% 
+  janitor::clean_names() %>% 
+  filter(
+    topic == "Overall Health",
+    response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
+  mutate(
+    response = 
+      fct_relevel(response,  c("Poor", "Fair", "Good", "Very good", "Excellent")))
+```
+
+The above code cleans the data as follows:
+
+* formats the data to use approrpriate variable names
+* focuses on the "Overall Health" topic
+* includes only responses from "Excellent" to "Poor"
+* Organizes responses as a factor taking levels **ordered** from "Poor" to "Excellet"
+
+#### Answer questions about the data
+
+Now we will evaluate the number of locations at which each state was observed, focusing on those with more than 7 locations in the years 2002 and 2010.
+
+```{r}
+brfss_smart2010 %>% 
+  filter(year %in% c(2002, 2010)) %>% 
+  select(year, locationabbr, locationdesc) %>% 
+  distinct() %>%
+  group_by(locationabbr, year) %>% 
+  summarize(n = n()) %>% 
+  filter(n >= 7) %>% 
+  arrange(year, desc(n))
+```
+
+In 2002, relatively few states had more than 7 locations, and the state with the most locations only had 10. By 2010, substantially more states had more than 7 locations, and the maximum was 41. 
+
+Next is a spaghetti plot showing the average proportion of "excellent" responses across locations over time. This plot shows the the proportion tended to decrease from roughly 2002 to 2006, and stabilized after. States that had higher rates in 2002 also had higher rates in 2010, although there is substantial variability within states over time. 
+
+```{r, fig.width = 12}
+brfss_smart2010 %>% 
+  filter(response == "Excellent") %>% 
+  group_by(year, locationabbr) %>% 
+  summarize(mean_exc = mean(data_value)) %>% 
+  ggplot(aes(x = year, y = mean_exc, group = locationabbr, color = locationabbr)) +
+  geom_path() + 
+  labs(caption = "Average proportion of excellent for each state by year") + 
+  viridis::scale_color_viridis(
+    discrete = TRUE) + 
+  theme(legend.position = "none")
+```
+
+The last plot shows the distribution of responses in NY state in 2006 and 2010. There are somewhat fewer "Very good" and somewhat more "Good" reponses, comparing 2010 to 2006.
+
+```{r}
+brfss_smart2010 %>% 
+  filter(year %in% c(2006, 2010),
+         locationabbr == "NY") %>% 
+  ggplot(aes(x = response, y = data_value)) + 
+  geom_boxplot() + 
+  facet_grid(~year)
+```
+
+
+
+### Problem 3
+
+#### Read in the data
+
+The code chunk below imports the data. Among other things, we convert from wide to long format, ensure minutes are numeric and correctly ordered, convert day of the week to a sensibly ordered factor, and create a weekday variable. 
+
+```{r}
+accel_df = 
+  read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "minute",
+    names_prefix = "activity_", 
+    values_to = "activity_count"
+  ) %>% 
+  mutate(
+    minute = as.numeric(minute),
+    day = factor(day),
+    day = fct_relevel(day, "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", 
+    "Friday", "Saturday"),
+    weekend = as.numeric(day %in% c("Saturday", "Sunday")),
+    weekend = recode(weekend, `1` = "weekend", `0` = "weekday")
+  ) 
+```
+
+The table below shows the total activity in each observation day. Two Saturdays seem to have unreasonably low total activities; inspection of these days shows they recorded `1` in every minute, most likely by mistake. Other trends are hard to identify with certainty -- it's possible activity increases over time, or is somewhat higher on weekdays, but difficult to say without additional analysis.
+
+```{r}
+accel_df %>% 
+  group_by(day, week) %>% 
+  summarize(total_act = sum(activity_count)) %>% 
+  pivot_wider(
+    names_from = day, 
+    values_from = total_act)
+```
+
+The plot below shows activity trajectories, colored by day of the week. Although not required, we include smooth lines showing averages for day of the week. The results suggest a peak in activity on Friday evenings and Sunday mid-mornings, but few other obvious trends emerge.
+
+```{r}
+accel_df %>% 
+  ggplot(aes(x = minute, y = activity_count, group = day_id, color = day)) + 
+  geom_line(alpha = .2) + 
+  geom_smooth(aes(group = day), se = FALSE)
+```
+
+
+
