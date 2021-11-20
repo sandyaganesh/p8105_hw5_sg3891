@@ -7,7 +7,6 @@ output: github_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
-library(p8105.datasets)
 library(viridis)
 
 knitr::opts_chunk$set(
@@ -84,13 +83,14 @@ prop_test_function = function(city_df) {
       n = city_summary %>% pull(n))
   
   return(city_test)
-  
+}
+
 prop_test_function(baltimore_df)
 
 homicide_df %>% 
   filter(city_state == "AlbuquerqueNM") %>% 
   prop_test_function()
-}
+
 ```
 
 ```{r}
@@ -116,4 +116,49 @@ results_df %>%
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+## Problem 2
+
+```{r}
+tibble(
+  files = list.files("./data/zip_data/"))
+```
+
+write function to iterate across each file name and use read csv to import each file = column of
+data sets.
+
+unnest the column to get files and each week as a colun
+
+tidy the result (take the file name; get control arm and subject arm and unique subject ID; 
+need to change from wide to long format)
+
+## Problem 3
+
+#### Introduce missing values into iris dataset
+```{r}
+set.seed(10)
+
+iris_with_missing = iris %>% 
+  map_df(~replace(.x, sample(1:150, 20), NA)) %>%
+  mutate(Species = as.character(Species))
+```
+
+#### Write and apply function to replace missing values
+```{r}
+fill_missing = function(vector) {
+
+  if (is.numeric(vector)) {
+    vector = replace_na(vector, round(mean(vector, na.rm = TRUE), 2))
+  }
+  
+  if (is.character(vector)) {
+    vector = replace_na(vector, "virginica")
+  }
+  
+  return(vector)
+
+}
+
+map(iris_with_missing, fill_missing)
 ```
