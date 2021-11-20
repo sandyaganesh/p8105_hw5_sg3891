@@ -112,13 +112,18 @@ results_df =
 
 Finally, we plot the data to show estimates and confidence intervals for each city
 
-```{r}
+```{r city_ci_plot}
 results_df %>% 
   mutate(city_state = fct_reorder(city_state, estimate)) %>% 
   ggplot(aes(x = city_state, y = estimate)) +
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    title = "Proportion estimates and CIs for unsolved homicides",
+    x = "Cities",
+    y = "Proportion of Unsolved Homicides ",
+    caption = "Data from Washington Post")
 ```
 
 ## Problem 2
