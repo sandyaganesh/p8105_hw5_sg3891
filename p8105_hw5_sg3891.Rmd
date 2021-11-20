@@ -33,7 +33,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 #### Clean data and create function
 ```{r clean}
 homicide_df =
-  read_csv("./data/homicide-data.csv", na = c("", "Unknown")) %>% 
+  read_csv("./data/homicide-data.csv", na = c("", "Unknown"), show_col_types = FALSE) %>% 
   mutate(
     city_state = str_c(city, state),
     resolution = case_when(
@@ -120,17 +120,17 @@ results_df %>%
 
 ## Problem 2
 
-```{r}
+```{r, message = FALSE}
 long_data = 
   tibble(
   files = list.files("./data/zip_data/")) %>%
   mutate(
-    subject_data = map(files, ~read_csv(file.path("./data/zip_data/",.)))
+    subject_data = map(files, ~read_csv(file.path("./data/zip_data/",.), show_col_types = FALSE))
   ) %>%
   unnest(subject_data) %>%
   mutate(
     arm = substr(files,1L,3L),
-    subject_id = substr(files,1L,6L)
+    subject_id = substr(files,5L,6L)
   ) %>% 
   pivot_longer(
     cols = starts_with("week"),
@@ -140,13 +140,22 @@ long_data =
   ) %>% 
   select(arm, subject_id, week, observation)
   
+
 ```
 
 ```{r spaghetti}
-
-
+long_data %>% 
+  group_by(subject_id, week) %>% 
+  ggplot(aes(x = week, y = observation, color = subject_id)) + 
+  geom_line(aes(group = subject_id)) + 
+  facet_grid(cols=vars(arm)) +
+  labs(
+    title = "Average value over time for all states ",
+    x = "Week",
+    y = "Observation",
+    caption = "Data from the longitudinal set")
 ```
-
+Looking at the control group, there is no obvious trend in observations across the 8 weeks, with values tending to remain the same on average across the study. However in the experimental group, we can see that there is a clear upwards trend, with the observation values increasing as weeks increase. Therefore, comparing the two arms, we can see that at week 8 at the end of study, the observation values for the experimental group are much higher than the control group. 
 ## Problem 3
 
 #### Introduce missing values into iris dataset
