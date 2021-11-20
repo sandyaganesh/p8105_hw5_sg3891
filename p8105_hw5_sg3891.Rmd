@@ -121,17 +121,31 @@ results_df %>%
 ## Problem 2
 
 ```{r}
-tibble(
-  files = list.files("./data/zip_data/"))
+long_data = 
+  tibble(
+  files = list.files("./data/zip_data/")) %>%
+  mutate(
+    subject_data = map(files, ~read_csv(file.path("./data/zip_data/",.)))
+  ) %>%
+  unnest(subject_data) %>%
+  mutate(
+    arm = substr(files,1L,3L),
+    subject_id = substr(files,1L,6L)
+  ) %>% 
+  pivot_longer(
+    cols = starts_with("week"),
+    names_to = "week",
+    names_prefix = "week_",
+    values_to = "observation"
+  ) %>% 
+  select(arm, subject_id, week, observation)
+  
 ```
 
-write function to iterate across each file name and use read csv to import each file = column of
-data sets.
+```{r spaghetti}
 
-unnest the column to get files and each week as a colun
 
-tidy the result (take the file name; get control arm and subject arm and unique subject ID; 
-need to change from wide to long format)
+```
 
 ## Problem 3
 
