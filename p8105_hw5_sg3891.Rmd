@@ -30,10 +30,13 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 ## Problem 1
 
-#### Clean data and create function
+Read in and clean the data.
+
 ```{r clean}
-homicide_df =
-  read_csv("./data/homicide-data.csv", na = c("", "Unknown"), show_col_types = FALSE) %>% 
+raw_homicide_df =
+  read_csv("./data/homicide-data.csv", na = c("", "Unknown"), show_col_types = FALSE)
+
+homicide_df = raw_homicide_df %>% 
   mutate(
     city_state = str_c(city, state),
     resolution = case_when(
@@ -44,6 +47,11 @@ homicide_df =
   relocate(city_state) %>% 
   filter(city_state != "TulsaAL")
 ```
+
+
+The total number of observations in the homicide data set from the Washington Post is `r nrow(raw_homicide_df)` observations with `r ncol(raw_homicide_df)` variables. Some key variables in this data set include `r names(raw_homicide_df %>% select(c(8, 9, 12)))`. 
+
+In the code chunk below we summarize within cities to obtain the total number of homicides and the number of unsolved homicides, and run a prop test for a single city (Baltimore).
 
 ```{r summary}
 baltimore_df = 
@@ -66,6 +74,7 @@ baltimore_test %>%
   broom::tidy()
 ```
 
+In the 2 code chunks below we create a function to run prop.test for each of the cities in the dataset, and extract both the proportion of unsolved homicides and the confidence interval for each.
 
 ```{r}
 prop_test_function = function(city_df) {
@@ -85,12 +94,6 @@ prop_test_function = function(city_df) {
   return(city_test)
 }
 
-prop_test_function(baltimore_df)
-
-homicide_df %>% 
-  filter(city_state == "AlbuquerqueNM") %>% 
-  prop_test_function()
-
 ```
 
 ```{r}
@@ -107,7 +110,7 @@ results_df =
 
 ```
 
-#### Plot data to show estimates and confidence intervals
+Finally, we plot the data to show estimates and confidence intervals for each city
 
 ```{r}
 results_df %>% 
@@ -115,10 +118,17 @@ results_df %>%
   ggplot(aes(x = city_state, y = estimate)) +
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
 ## Problem 2
+
+The code chunks for problem 2 utilize a longitudinal study data set with an experimental and control arm. 
+
+
+#### Clean and tidy data
+
+In the code chunk below we create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time
 
 ```{r, message = FALSE}
 long_data = 
@@ -129,7 +139,7 @@ long_data =
   ) %>%
   unnest(subject_data) %>%
   mutate(
-    arm = substr(files,1L,3L),
+    arm = ifelse(str_detect(files, "con"), "Control", "Experimental"),
     subject_id = substr(files,5L,6L)
   ) %>% 
   pivot_longer(
@@ -140,22 +150,28 @@ long_data =
   ) %>% 
   select(arm, subject_id, week, observation)
   
-
 ```
+
+#### Spaghetti Plot
+In the code chunk below we make a spaghetti plot that displays observations on each subject over time, and comment on differences between groups.
 
 ```{r spaghetti}
 long_data %>% 
   group_by(subject_id, week) %>% 
   ggplot(aes(x = week, y = observation, color = subject_id)) + 
   geom_line(aes(group = subject_id)) + 
-  facet_grid(cols=vars(arm)) +
+  geom_point() +
+  facet_grid(. ~arm) +
   labs(
     title = "Average value over time for all states ",
     x = "Week",
     y = "Observation",
+    color = "subject_id",
     caption = "Data from the longitudinal set")
 ```
-Looking at the control group, there is no obvious trend in observations across the 8 weeks, with values tending to remain the same on average across the study. However in the experimental group, we can see that there is a clear upwards trend, with the observation values increasing as weeks increase. Therefore, comparing the two arms, we can see that at week 8 at the end of study, the observation values for the experimental group are much higher than the control group. 
+
+Looking at the control group, there is no obvious trend in observations across the 8 weeks, with values tending to remain the same on average across the study. However in the experimental group, we can see that there is a clear upwards trend, with the observation values increasing as weeks increase. Therefore, comparing the two arms, we can see that while at week 1 the observation values were fairly similar between the two arms, at week 8 (by the end of study), the observation values for the experimental group are much higher than the control group. 
+
 ## Problem 3
 
 #### Introduce missing values into iris dataset
@@ -168,6 +184,9 @@ iris_with_missing = iris %>%
 ```
 
 #### Write and apply function to replace missing values
+* For numeric variables, missing values are replaced by the mean of non-missing values
+* For character variables, missing values are replaced with "virginica"
+
 ```{r}
 fill_missing = function(vector) {
 
@@ -179,9 +198,15 @@ fill_missing = function(vector) {
     vector = replace_na(vector, "virginica")
   }
   
+  if (!is.character(vector) & !is.numeric(vector)) {
+  vector = "Warning: Neither numeric nor character"
+  }
+  
   return(vector)
 
 }
 
-map(iris_with_missing, fill_missing)
+iris_without_missing = map_df(iris_with_missing, fill_missing)
+
+iris_without_missing
 ```
