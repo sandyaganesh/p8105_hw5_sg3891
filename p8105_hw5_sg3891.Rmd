@@ -30,6 +30,8 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 ## Problem 1
+
+#### Clean data and create function
 ```{r clean}
 homicide_df =
   read_csv("./data/homicide-data.csv", na = c("", "Unknown")) %>% 
@@ -67,19 +69,51 @@ baltimore_test %>%
 
 
 ```{r}
-homicide_df =
-  read_csv("./data/homicide-data.csv", na = c("", "Unknown")) %>% 
-  mutate(
-    city_state = str_c(city, state),
-    resolution = case_when(
-      disposition == "Closed without arrest" ~ "unsolved",
-      disposition == "Open/No arrest" ~ "unsolved",
-      disposition == "Closed by arrest" ~ "solved"
-      )) %>% 
-  relocate(city_state) %>% 
-  filter(city_state != "TulsaAL")
+prop_test_function = function(city_df) {
+  
+  city_summary =
+    city_df %>%
+    summarize(
+      unsolved = sum(resolution == "unsolved"),
+      n = n()
+    )
+
+  city_test =
+    prop.test(
+      x = city_summary %>% pull(unsolved),
+      n = city_summary %>% pull(n))
+  
+  return(city_test)
+  
+prop_test_function(baltimore_df)
+
+homicide_df %>% 
+  filter(city_state == "AlbuquerqueNM") %>% 
+  prop_test_function()
+}
 ```
 
 ```{r}
+results_df = 
+  homicide_df %>% 
+  nest(data = uid:resolution) %>% 
+  mutate(
+    test_results = map(data, prop_test_function),
+    tidy_results = map(test_results, broom::tidy)
+  ) %>% 
+  select(city_state, tidy_results) %>% 
+  unnest(tidy_results) %>% 
+  select(city_state, estimate, starts_with("conf"))
 
+```
+
+#### Plot data to show estimates and confidence intervals
+
+```{r}
+results_df %>% 
+  mutate(city_state = fct_reorder(city_state, estimate)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
