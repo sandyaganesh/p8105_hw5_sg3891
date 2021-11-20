@@ -160,7 +160,7 @@ long_data =
 #### Spaghetti Plot
 In the code chunk below we make a spaghetti plot that displays observations on each subject over time, and comment on differences between groups.
 
-```{r spaghetti}
+```{r spaghetti_plot}
 long_data %>% 
   group_by(subject_id, week) %>% 
   ggplot(aes(x = week, y = observation, color = subject_id)) + 
